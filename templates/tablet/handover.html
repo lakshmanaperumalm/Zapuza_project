@@ -1,0 +1,43 @@
+{% extends "tablet/base_tablet.html" %}{% load ui %}
+{% block tablet %}
+<div class="t-scroll" style="padding:22px 24px">
+  <div class="row between" style="margin-bottom:14px">
+    <div>
+      <div class="tiny faint">SHIFT A → SHIFT B · DIGITAL HANOVER</div>
+      <div style="font-size:20px;font-weight:750;margin-top:3px">Acknowledge the shift handover</div>
+    </div>
+    <span class="chip {% if handover_ok %}green{% else %}amber{% endif %}" style="font-size:9px">{% icon "lock" 9 %} {% if handover_ok %}Signed{% else %}Job entry locked{% endif %}</span>
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="col" style="gap:7px">
+      {% for key, label, detail in checks %}
+        <label class="card" style="cursor:pointer">
+          <div class="card-b" style="display:flex;gap:11px;align-items:flex-start">
+            <input type="checkbox" name="{{ key }}" style="accent-color:#16D3A8;width:18px;height:18px;margin-top:2px" {% if handover_ok %}checked{% endif %}>
+            <span class="grow">
+              <span class="b small" style="display:block">{{ label }}</span>
+              <span class="tiny faint">{{ detail }}</span>
+            </span>
+            <span class="chip gray" style="font-size:8px">{% icon "eye" 8 %} Review</span>
+          </div>
+        </label>
+      {% endfor %}
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <div class="card-b">
+        <div class="field"><label>Incoming operator signature</label>
+          <input class="input" name="signature" placeholder="Type your full name" value="{{ employee.name }}"></div>
+        <div class="field" style="margin-bottom:0"><label>Handover note (optional)</label>
+          <textarea class="input" name="note" rows="2">Coolant top-up on CNC-L4; insert wear 0.14 mm — change due next lot.</textarea></div>
+      </div>
+      <div class="dc-foot">
+        <span class="tiny faint" style="margin-right:auto">The incoming operator cannot start work until this is signed.</span>
+        <button class="btn primary" type="submit">{% icon "pen" 15 %} Sign &amp; start shift</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

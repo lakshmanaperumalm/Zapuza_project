@@ -1,0 +1,43 @@
+{% extends "base.html" %}{% load ui %}
+{% block page %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Audit Trail</h1>
+    <p class="page-sub">Append-only ledger. Every approval, rejection, release and blocked gate pass is written with user, role, device, IP and a hash.</p>
+  </div>
+  <div class="row wrap">
+    <form method="get" class="row" style="gap:8px">
+      <input class="input" name="q" value="{{ q }}" placeholder="Search action, user or entity" style="width:250px;height:36px">
+      <button class="btn" type="submit">{% icon "search" 14 %} Filter</button>
+    </form>
+    <button class="btn" onclick="window.print()">{% icon "download" 15 %} Export</button>
+  </div>
+</div>
+
+<div class="callout blue" style="margin-bottom:14px">{% icon "shieldCheck" 15 %}
+  <div><b>Append-only by design.</b> Entries cannot be edited or deleted from the application — this is the record an auditor or customer quality engineer will ask for.</div>
+</div>
+
+<div class="card">
+  <div class="card-h"><h3>{% icon "history" 15 %} Audit entries</h3><span class="sub">{{ entries|length }} shown · newest first</span></div>
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Time</th><th>User</th><th>Role</th><th>Action</th><th>Entity</th><th>Detail</th><th>Device</th><th>Hash</th></tr></thead>
+    <tbody>
+      {% for e in entries %}
+        <tr>
+          <td class="mono tiny">{{ e.at|date:"d M H:i:s" }}</td>
+          <td class="b small">{{ e.user }}</td>
+          <td class="tiny muted">{{ e.role }}</td>
+          <td><span class="chip {% if 'block' in e.action|lower or 'quarant' in e.action|lower or 'reject' in e.action|lower %}red{% elif 'approved' in e.action|lower or 'released' in e.action|lower %}green{% else %}gray{% endif %}" style="font-size:8.5px">{{ e.action }}</span></td>
+          <td class="small">{{ e.entity }}</td>
+          <td class="tiny faint" style="max-width:320px">{{ e.detail|truncatechars:90 }}</td>
+          <td class="mono tiny">{{ e.device }}</td>
+          <td class="mono tiny faint">{{ e.hash }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8" class="muted">No entries match that filter.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

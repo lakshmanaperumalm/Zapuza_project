@@ -1,0 +1,176 @@
+{% extends "base.html" %}{% load ui %}
+{% block page %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Supervisor Approval Queue</h1>
+    <p class="page-sub">Completed checklists arrive in real time. CTQ failures freeze concessions and notify the Quality Head immediately.</p>
+  </div>
+  <div class="row wrap">
+    <a class="btn" href="{% url 'factoryops:jobs' %}">{% icon "clipboard" 15 %} Job travelers</a>
+  </div>
+</div>
+
+{% if not can_approve %}
+  <div class="callout amber" style="margin-bottom:14px">{% icon "lock" 15 %}
+    <div><b>You are signed in as {{ employee.get_role_display }}.</b> This role can review the queue but cannot approve or reject. Sign in as S. Ravi (Shift Supervisor) to exercise the decision.</div>
+  </div>
+{% endif %}
+
+<div class="stack">
+{% for a in pending %}
+  <div class="card appr-card">
+    <div class="appr-top">
+      <div class="appr-avatar">{{ a.inspector|initials }}</div>
+      <div class="grow" style="min-width:0">
+        <div class="row wrap" style="gap:8px">
+          <span class="b" style="font-size:13.5px">{{ a.wo.part.name }}</span>
+          <span class="tiny faint mono">{{ a.wo.wo_no }}</span>
+          {% if a.ctq_failed %}<span class="chip red" style="font-size:9px">{% icon "alert" 9 %} CTQ failure</span>
+          {% elif a.failed %}<span class="chip amber" style="font-size:9px">{% icon "alert" 9 %} Concession eligible</span>
+          {% else %}<span class="chip green" style="font-size:9px">{% icon "check" 9 %} All in tolerance</span>{% endif %}
+        </div>
+        <div class="tiny faint" style="margin-top:3px">{{ a.op }} · {{ a.template_label }} · {{ a.inspector }} · submitted {{ a.submitted_at|time:"H:i" }}</div>
+      </div>
+      <div style="text-align:right;flex:none">
+        <div class="tiny faint">Measurements</div>
+        <div class="b" style="font-size:16px">{{ a.measurements.count }}</div>
+      </div>
+    </div>
+
+    <table class="meas">
+      <thead><tr><th>Characteristic</th><th>Specification</th><th>Actual</th><th>Result</th></tr></thead>
+      <tbody>
+        {% for m in a.measurements.all %}
+          <tr>
+            <td class="b">{{ m.name }}{% if m.ctq %}<span class="ctq">CTQ</span>{% endif %}</td>
+            <td class="muted mono" style="font-size:11px">{{ m.spec_text }}</td>
+            <td class="fld {% if m.result == 'fail' %}fail{% endif %}">{{ m.formatted_value }} {{ m.unit }}</td>
+            <td>{% if m.result == 'pass' %}<span class="pass">{% icon "check" 11 %} PASS</span>{% else %}<span class="fail">{% icon "x" 11 %} FAIL</span>{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="appr-actions">
+      <span class="tiny faint" style="margin-right:auto">{% icon "file" 12 %} {{ a.photos }} photo evidence on file · {{ a.ctq_note }}</span>
+      <button class="btn danger sm" data-modal="reject-{{ a.pk }}">{% icon "lock" 13 %} Reject → hold</button>
+      {% if a.ctq_failed or not a.failed %}
+        <button class="btn amber sm" disabled title="Concession is only available for non-CTQ failures">{% icon "pen" 13 %} Concession</button>
+      {% else %}
+        <button class="btn amber sm" data-modal="conc-{{ a.pk }}">{% icon "pen" 13 %} Concession</button>
+      {% endif %}
+      {% if a.ctq_failed or a.failed %}
+        <button class="btn green sm" disabled title="Approval requires every dimension in tolerance">{% icon "check" 13 %} Approve &amp; release</button>
+      {% else %}
+        <button class="btn green sm" data-modal="approve-{{ a.pk }}">{% icon "check" 13 %} Approve &amp; release</button>
+      {% endif %}
+    </div>
+
+    {% if a.ctq_failed %}
+      <div style="padding:0 17px 14px"><div class="callout red">{% icon "alert" 14 %}
+        <div>CTQ dimension out of tolerance — approve and concession are both locked. Reject to quarantine the lot and escalate to MRB.</div></div></div>
+    {% endif %}
+  </div>
+
+  <!-- reject modal -->
+  <div class="modal-scrim" id="reject-{{ a.pk }}">
+    <form class="modal" method="post" action="{% url 'factoryops:reject_inspection' a.pk %}">
+      {% csrf_token %}
+      <div class="modal-h">
+        <div class="mh-ico" style="background:rgba(255,93,108,.13);color:#FF9AA4">{% icon "lock" 17 %}</div>
+        <div class="grow"><h3>Reject &amp; quarantine lot</h3><div class="mh-sub">{{ a.wo.wo_no }} · {{ a.wo.part.name }}</div></div>
+        <button type="button" class="icon-btn" data-close>{% icon "x" 15 %}</button>
+      </div>
+      <div class="modal-b">
+        <div class="callout red" style="margin-bottom:14px">{% icon "lock" 15 %}
+          <div>The digital traveler will be tagged <b>Quarantined</b>, the physical location moved to the <b>Rejection Holding Area</b>, and all downstream machines blocked until MRB disposition.</div>
+        </div>
+        <div class="field"><label>Rejection reason</label>
+          <select class="input" name="reason">
+            <option>CTQ dimension out of tolerance</option>
+            <option>Non-CTQ dimension beyond concession limits</option>
+            <option>Visual defect / surface damage</option>
+            <option>Missing or invalid measurement tool record</option>
+          </select>
+        </div>
+        <div class="field"><label>Inspector / supervisor remarks</label>
+          <textarea class="input" name="note" rows="3">{% if a.ctq_failed %}{{ a.ctq_failed.0.name }} {{ a.ctq_failed.0.formatted_value }} outside {{ a.ctq_failed.0.spec_text }}. Lot moved to quarantine; Quality Head notified. MRB scheduled 14:00.{% endif %}</textarea>
+        </div>
+      </div>
+      <div class="modal-f">
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button class="btn solid-red" type="submit">{% icon "lock" 14 %} Quarantine lot</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- concession modal -->
+  <div class="modal-scrim" id="conc-{{ a.pk }}">
+    <form class="modal" method="post" action="{% url 'factoryops:concession_inspection' a.pk %}">
+      {% csrf_token %}
+      <div class="modal-h">
+        <div class="mh-ico" style="background:rgba(246,179,60,.13);color:#FFCE77">{% icon "pen" 17 %}</div>
+        <div class="grow"><h3>Issue a concession</h3><div class="mh-sub">{{ a.wo.wo_no }} · non-CTQ deviation only</div></div>
+        <button type="button" class="icon-btn" data-close>{% icon "x" 15 %}</button>
+      </div>
+      <div class="modal-b">
+        <div class="callout amber" style="margin-bottom:14px">{% icon "alert" 15 %}
+          <div>The lot ships with a <b>permanent deviation flag</b> in its quality history. This requires a written justification and is visible to the customer on the inspection certificate.</div>
+        </div>
+        <div class="field"><label>Justification (minimum 12 characters)</label>
+          <textarea class="input" name="justification" rows="3" placeholder="Why is this deviation acceptable? Who agreed?">Visual acceptance agreed with customer quality; deviation is cosmetic on a non-functional surface.</textarea>
+        </div>
+      </div>
+      <div class="modal-f">
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button class="btn amber" type="submit">{% icon "pen" 14 %} Record concession</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- approve modal -->
+  <div class="modal-scrim" id="approve-{{ a.pk }}">
+    <form class="modal narrow" method="post" action="{% url 'factoryops:approve_inspection' a.pk %}">
+      {% csrf_token %}
+      <div class="modal-h">
+        <div class="mh-ico">{% icon "shieldCheck" 17 %}</div>
+        <div class="grow"><h3>Approve checklist</h3><div class="mh-sub">{{ a.wo.wo_no }} · {{ a.measurements.count }} parameters in tolerance</div></div>
+        <button type="button" class="icon-btn" data-close>{% icon "x" 15 %}</button>
+      </div>
+      <div class="modal-b">
+        <div class="callout green">{% icon "checkCircle" 15 %}
+          <div>Approving signs the traveler, completes the operation and unlocks the next stage. This action is written to the immutable audit ledger.</div>
+        </div>
+      </div>
+      <div class="modal-f">
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button class="btn green" type="submit">{% icon "check" 14 %} Approve &amp; sign traveler</button>
+      </div>
+    </form>
+  </div>
+{% empty %}
+  <div class="card"><div class="card-b muted">No checklists are waiting for approval right now.</div></div>
+{% endfor %}
+</div>
+
+<div class="section-title">Decided this shift</div>
+<div class="card">
+  <div class="card-b tight">
+    {% for a in decided %}
+      <div class="alert-row" style="cursor:default">
+        <span class="alert-ico {% if a.status == 'approved' %}green{% elif a.status == 'conceded' %}amber{% else %}red{% endif %}"
+              style="background:{% if a.status == 'approved' %}rgba(52,211,153,.12){% elif a.status == 'conceded' %}rgba(246,179,60,.12){% else %}rgba(255,93,108,.12){% endif %}">
+          {% if a.status == 'approved' %}{% icon "check" 14 %}{% elif a.status == 'conceded' %}{% icon "pen" 14 %}{% else %}{% icon "lock" 14 %}{% endif %}
+        </span>
+        <div class="grow">
+          <div class="b small">{{ a.wo.wo_no }} · {{ a.wo.part.name }}</div>
+          <div class="tiny faint">{{ a.op }} · {{ a.decided_by }} · {{ a.decided_at|time:"H:i" }}{% if a.note %} · {{ a.note|truncatechars:60 }}{% endif %}</div>
+        </div>
+        <span class="chip {% if a.status == 'approved' %}green{% elif a.status == 'conceded' %}amber{% else %}red{% endif %}" style="font-size:8.5px">{{ a.get_status_display }}</span>
+      </div>
+    {% empty %}
+      <div class="card-b muted small">Nothing decided yet this shift.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

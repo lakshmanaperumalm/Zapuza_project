@@ -1,0 +1,40 @@
+{% extends "tablet/base_tablet.html" %}{% load ui %}
+{% block tablet %}
+<div class="t-scroll" style="padding:22px 24px">
+  <div class="row between" style="margin-bottom:14px">
+    <div>
+      <div class="tiny faint">STATION VERIFIED · {{ machine.name|default:"—" }} · {{ machine.code }}</div>
+      <div style="font-size:20px;font-weight:750;margin-top:3px">Choose a job traveler</div>
+    </div>
+    <span class="chip green" style="font-size:9px">{% icon "check" 9 %} Location lock satisfied</span>
+  </div>
+
+  <div class="col" style="gap:8px">
+    {% for o in orders %}
+      <div class="card">
+        <div class="card-b" style="display:flex;gap:12px;align-items:center">
+          <span class="alert-ico" style="width:36px;height:36px;{% if o.needs_first_piece %}background:#FEF3C7;color:#B45309{% else %}background:rgba(91,149,255,.12);color:#9CC0FF{% endif %}">
+            {% if o.needs_first_piece %}{% icon "lock" 16 %}{% else %}{% icon "clipboard" 16 %}{% endif %}</span>
+          <div class="grow">
+            <div class="b small">{{ o.wo_no }} · {{ o.part.name }}</div>
+            <div class="tiny faint">Op {{ o.stage_index }}0 · {{ o.qty_done }}/{{ o.qty }} produced · {{ o.heat.heat_no }}</div>
+          </div>
+          {% if o.needs_first_piece %}<span class="chip amber" style="font-size:8.5px">First-piece gate</span>
+          {% elif o.status == 'AWAITING_APPROVAL' %}<span class="chip blue" style="font-size:8.5px">Awaiting approval</span>
+          {% elif o.status == 'HOLD' %}<span class="chip red" style="font-size:8.5px">On hold</span>
+          {% elif o.status == 'READY_DISPATCH' %}<span class="chip green" style="font-size:8.5px">Ready to dispatch</span>{% endif %}
+          <a class="btn primary sm" href="{% if o.needs_first_piece %}{% url 'factoryops:tablet_first_piece' o.wo_no %}{% else %}{% url 'factoryops:tablet_traveler' o.wo_no %}{% endif %}" style="text-decoration:none">
+            {% icon "chevR" 14 %} Open
+          </a>
+        </div>
+        {% if o.wo_no == 'WO-1052' %}
+          <div class="dc-foot" style="padding:8px 16px">
+            <span class="tiny faint">Hourly in-process sample due every 50 parts</span>
+            <a class="btn sm" href="{% url 'factoryops:tablet_hourly' o.wo_no %}" style="margin-left:auto;text-decoration:none">{% icon "clock" 12 %} Log hourly sample</a>
+          </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

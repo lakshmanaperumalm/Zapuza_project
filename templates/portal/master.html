@@ -1,0 +1,103 @@
+{% extends "base.html" %}{% load ui %}
+{% block page %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Master Data &amp; Calibration</h1>
+    <p class="page-sub">The plant's digital mirror — machines, gauges, PDI templates, raw material lots and parts. Everything else in the system references this.</p>
+  </div>
+  <div class="row wrap">
+    <span class="chip amber" style="font-size:9.5px">{% icon "alert" 10 %} {{ expired_gauges }} gauges past calibration</span>
+    <span class="chip red" style="font-size:9.5px">{% icon "lock" 10 %} {% if pm_overdue %}{{ pm_overdue }} machine{{ pm_overdue|pluralize }} PM overdue{% else %}PM schedule clear{% endif %}</span>
+  </div>
+</div>
+
+<div class="tabs" style="margin-bottom:14px">
+  <a class="tab {% if tab == 'machines' %}active{% endif %}" href="?tab=machines" style="text-decoration:none">Machines ({{ machines|length }})</a>
+  <a class="tab {% if tab == 'gauges' %}active{% endif %}" href="?tab=gauges" style="text-decoration:none">Gauge register ({{ gauges|length }})</a>
+  <a class="tab {% if tab == 'templates' %}active{% endif %}" href="?tab=templates" style="text-decoration:none">Templates ({{ templates|length }})</a>
+  <a class="tab {% if tab == 'heats' %}active{% endif %}" href="?tab=heats" style="text-decoration:none">Raw material ({{ heats|length }})</a>
+  <a class="tab {% if tab == 'parts' %}active{% endif %}" href="?tab=parts" style="text-decoration:none">Parts ({{ parts|length }})</a>
+</div>
+
+{% if tab == 'machines' %}
+  <div class="card">
+    <div class="card-h"><h3>{% icon "cpu" 15 %} Machines &amp; workstations</h3><span class="sub">{{ machines|length }} stations · {{ bays }} bays</span></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Code</th><th>Machine</th><th>Department</th><th>State</th><th>Current job</th><th>PM</th><th>Cycle</th><th>Shift target</th></tr></thead>
+      <tbody>
+        {% for m in machines %}
+          <tr>
+            <td class="mono b">{{ m.code }}</td><td>{{ m.name }}</td><td class="muted">{{ m.dept }}</td>
+            <td><span class="chip {% if m.state == 'running' %}green{% elif m.state == 'locked' %}amber{% elif m.state == 'down' %}red{% else %}gray{% endif %}" style="font-size:8.5px">{{ m.state|capfirst }}</span></td>
+            <td class="tiny">{{ m.job|default:"—" }}{% if m.part %} · {{ m.part }}{% endif %}</td>
+            <td>{% if m.pm_status == 'overdue' %}<span class="chip red" style="font-size:8.5px">Overdue</span>{% else %}<span class="chip green" style="font-size:8.5px">OK</span>{% endif %}</td>
+            <td class="mono tiny">{{ m.cycle|default:"—" }}</td><td class="mono tiny">{{ m.target|default:"—" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+{% elif tab == 'gauges' %}
+  <div class="card">
+    <div class="card-h"><h3>{% icon "gauge" 15 %} Gauge register</h3><span class="sub">calibration controls measurement entry</span></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Code</th><th>Instrument</th><th>Range</th><th>Calibrated</th><th>Due</th><th>Holder</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for g in gauges %}
+          <tr>
+            <td class="mono b">{{ g.code }}</td><td>{{ g.kind }}</td><td class="muted">{{ g.range_text }}</td>
+            <td class="tiny">{{ g.calibrated_on|date:"d M Y" }}</td><td class="tiny">{{ g.due_on|date:"d M Y" }}</td>
+            <td class="tiny muted">{{ g.holder }}</td>
+            <td>{% if g.status == 'expired' %}<span class="chip red" style="font-size:8.5px">{% icon "lock" 8 %} Expired — blocked</span>
+                {% elif g.status == 'expiring' %}<span class="chip amber" style="font-size:8.5px">Expiring soon</span>
+                {% else %}<span class="chip green" style="font-size:8.5px">Valid</span>{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+{% elif tab == 'templates' %}
+  <div class="card">
+    {% for t in templates %}
+      <a class="tpl-card" href="/portal/studio/?tpl={{ t.pk }}">
+        <span class="tpl-ico">{% icon "layers" 16 %}</span>
+        <div class="grow">
+          <div class="row" style="gap:8px"><span class="b">{{ t.name }}</span><span class="revcode">{{ t.rev }}</span>
+            {% if t.status == 'released' %}<span class="chip green" style="font-size:8.5px">{% icon "check" 8 %} Released</span>{% else %}<span class="chip gray" style="font-size:8.5px">{% icon "pen" 8 %} {{ t.get_status_display }}</span>{% endif %}
+          </div>
+          <div class="tiny faint" style="margin-top:3px">Part {{ t.part_no }} · {{ t.fields.count }} fields · {{ t.ctq_count }} CTQ</div>
+          <div class="tiny faint" style="margin-top:2px">{{ t.approved_by|default:"Not yet approved — open the Template Studio" }}</div>
+        </div>
+        <span class="tiny" style="color:#9CC0FF">Open studio</span>{% icon "chevR" 14 'faint' %}
+      </a>
+    {% endfor %}
+  </div>
+{% elif tab == 'heats' %}
+  <div class="card">
+    <div class="card-h"><h3>{% icon "package" 15 %} Raw material lots</h3><span class="sub">MTC on file for every heat</span></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Heat</th><th>Grade</th><th>Supplier</th><th>Quantity</th><th>Received</th><th>Certificate</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for h in heats %}
+          <tr><td class="mono b">{{ h.heat_no }}</td><td>{{ h.grade }}</td><td class="muted">{{ h.supplier }}</td>
+            <td class="mono">{{ h.qty_kg }} kg</td><td class="tiny">{{ h.received|date:"d M Y" }}</td>
+            <td class="tiny mono">{{ h.mtc_file|default:"—" }}</td>
+            <td><span class="chip {% if h.status == 'released' %}green{% else %}amber{% endif %}" style="font-size:8.5px">{{ h.status }}</span></td></tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+{% else %}
+  <div class="card">
+    <div class="card-h"><h3>{% icon "box" 15 %} Parts</h3><span class="sub">customer part master</span></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Part number</th><th>Description</th><th>Customer</th><th>Work orders</th></tr></thead>
+      <tbody>
+        {% for p in parts %}
+          <tr><td class="mono b">{{ p.part_no }}</td><td>{{ p.name }}</td><td class="muted">{{ p.customer }}</td><td class="mono">{{ p.orders.count }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+{% endif %}
+{% endblock %}

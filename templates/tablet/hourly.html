@@ -1,0 +1,92 @@
+{% extends "tablet/base_tablet.html" %}{% load ui %}
+{% block tablet %}
+<div class="t-scroll" style="padding:22px 24px">
+  <div class="row between" style="margin-bottom:14px">
+    <div>
+      <div class="tiny faint">HOURLY IN-PROCESS SAMPLE · {{ wo.wo_no }} · {{ wo.part.part_no }}</div>
+      <div style="font-size:20px;font-weight:750;margin-top:3px">Three parts, once an hour</div>
+    </div>
+    <span class="chip amber" style="font-size:9px">{% icon "clock" 9 %} Next sample due in 12 min</span>
+  </div>
+
+  <div class="card" style="margin-bottom:14px;border-color:rgba(91,149,255,.35);background:linear-gradient(180deg,rgba(91,149,255,.09),rgba(91,149,255,.01))">
+    <div class="card-b" style="display:flex;gap:12px;align-items:center">
+      <span class="alert-ico blue" style="width:38px;height:38px">{% icon "clock" 18 %}</span>
+      <div class="grow">
+        <div class="b small">{{ wo.part.name }} · {{ wo.wo_no }}</div>
+        <div class="tiny faint">Pull three consecutive parts and measure the CTQ dimension — Shaft OD, part {{ wo.part.part_no }}, spec 31.980 – 32.000 mm.</div>
+      </div>
+      <div style="text-align:right;flex:none">
+        <div class="mono" id="hc-timer" style="font-size:24px;font-weight:750;color:#9CC0FF">60:00</div>
+        <div class="tiny faint">until next check</div>
+      </div>
+    </div>
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="col" style="gap:10px">
+      {% for n, label in samples %}
+        <div class="card">
+          <div class="card-b" style="display:flex;gap:14px;align-items:center">
+            <span class="param-num">{{ n }}</span>
+            <div class="grow">
+              <div class="b small">{{ label }}</div>
+              <div class="tiny faint">Shaft OD · spec 31.980 – 32.000 mm · MIC-204</div>
+            </div>
+            <input class="input" name="s{{ n }}" value="{{ prefill|get:n }}" inputmode="decimal"
+                   style="width:130px;height:44px;font-size:16px;text-align:right" placeholder="mm">
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="card-b">
+        <div class="field" style="margin:0">
+          <label>Observation for the supervisor</label>
+          <textarea class="input" name="note" rows="2" placeholder="Tool wear, vibration, chip colour — anything the next operator should know.">{{ note_value }}</textarea>
+        </div>
+      </div>
+      <div class="dc-foot">
+        <span class="tiny faint" style="margin-right:auto">A failed sample alerts the supervisor and freezes the next checklist.</span>
+        <a class="btn" href="{% url 'factoryops:tablet_jobs' %}" style="text-decoration:none">Back to jobs</a>
+        <button class="btn primary" type="submit">{% icon "check" 15 %} Log sample &amp; restart timer</button>
+      </div>
+    </div>
+  </form>
+
+  <div class="t-sec-label">Logged this shift</div>
+  <div class="card">
+    <div class="card-b tight">
+      {% for s in history %}
+        <div class="row between" style="padding:9px 2px;border-bottom:1px solid rgba(148,163,184,.1)">
+          <span class="row" style="gap:9px">
+            <span class="chip {% if s.passed %}green{% else %}red{% endif %}" style="font-size:8.5px">
+              {% if s.passed %}{% icon "check" 8 %} Pass{% else %}{% icon "x" 8 %} Fail{% endif %}</span>
+            <span class="mono small">{{ s.values.sample_1 }} · {{ s.values.sample_2 }} · {{ s.values.sample_3 }}</span>
+          </span>
+          <span class="tiny faint">{{ s.created_at|time:"H:i" }} · {{ s.wo.wo_no }}</span>
+        </div>
+      {% empty %}
+        <div class="tiny faint">No sample logged since this shift started — the first one is due at 10:30.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var el = document.getElementById('hc-timer');
+  if (!el) return;
+  var left = 12 * 60;
+  setInterval(function () {
+    if (left > 0) left--;
+    var m = String(Math.floor(left / 60)).padStart(2, '0');
+    var s = String(left % 60).padStart(2, '0');
+    el.textContent = m + ':' + s;
+  }, 1000);
+})();
+</script>
+{% endblock %}

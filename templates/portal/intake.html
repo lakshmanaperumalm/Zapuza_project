@@ -1,0 +1,265 @@
+{% extends "base.html" %}{% load ui %}
+{% block page %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Raw Material Intake &amp; MTC Verification</h1>
+    <p class="page-sub">Dock receiving through mill-test-certificate cross-check, lab sampling and supplier non-conformance. Nothing enters the store room without a verified heat number.</p>
+  </div>
+  <div class="row wrap">
+    <span class="chip amber" style="font-size:9.5px">{% icon "package" 10 %} {{ awaiting }} awaiting</span>
+    <span class="chip blue" style="font-size:9.5px">{% icon "clock" 10 %} {{ lab }} in lab</span>
+    <span class="chip green" style="font-size:9.5px">{% icon "check" 10 %} {{ released }} released today</span>
+  </div>
+</div>
+
+<div class="kpis four">
+  <div class="kpi"><div class="k-label">Awaiting verification</div><div class="k-value">{{ awaiting }}</div><div class="k-foot">MTC not yet cross-checked</div>{% spark "1,2,2,3,2,2,2" "#F6B33C" %}</div>
+  <div class="kpi"><div class="k-label">In lab testing</div><div class="k-value">{{ lab }}</div><div class="k-foot">spectro / mechanicals pending</div>{% spark "0,1,1,1,1,1,1" "#5B95FF" %}</div>
+  <div class="kpi"><div class="k-label">Released today</div><div class="k-value">{{ released }}</div><div class="k-foot">barcode tags issued to stores</div>{% spark "0,1,1,1,2,2,2" "#34D399" %}</div>
+  <div class="kpi"><div class="k-label">Open SNCRs</div><div class="k-value">{{ open_sncr }}</div><div class="k-foot">supplier non-conformance reports</div>{% spark "1,1,2,2,2,2,2" "#FF5D6C" %}</div>
+</div>
+
+<div class="grid2">
+  <div class="stack">
+    {% for lot in lots %}
+      <div class="card intake-card">
+        <div class="dc-top">
+          <span class="alert-ico" style="width:34px;height:34px;background:rgba(91,149,255,.12);color:#9CC0FF">{% icon "package" 16 %}</span>
+          <div class="grow">
+            <div class="row wrap" style="gap:8px">
+              <span class="b" style="font-size:13px">{{ lot.supplier }}</span>
+              <span class="chip gray" style="font-size:8.5px">{{ lot.grade }}</span>
+              {% if lot.status == 'awaiting' %}<span class="chip amber" style="font-size:8.5px">{% icon "clock" 8 %} Awaiting MTC verification</span>
+              {% elif lot.status == 'lab' %}<span class="chip blue" style="font-size:8.5px">{% icon "drop" 8 %} In lab testing</span>
+              {% elif lot.status == 'released' %}<span class="chip green" style="font-size:8.5px">{% icon "check" 8 %} Released to stores</span>
+              {% else %}<span class="chip red" style="font-size:8.5px">{% icon "lock" 8 %} Supplier quarantine</span>{% endif %}
+            </div>
+            <div class="tiny faint mono" style="margin-top:3px">{{ lot.no }} · {{ lot.heat_no }} · {{ lot.po }} · {{ lot.received }}</div>
+          </div>
+          <div class="tiny faint mono">{{ lot.released_at }}</div>
+        </div>
+
+        <div class="intake-meta">
+          <div><div class="im-l">Quantity</div><div class="im-v">{{ lot.qty_kg }} kg</div></div>
+          <div><div class="im-l">Bundles</div><div class="im-v">{{ lot.bundles }}</div></div>
+          <div><div class="im-l">Vehicle</div><div class="im-v">{{ lot.vehicle }}</div></div>
+          <div><div class="im-l">MTC</div><div class="im-v {% if not lot.mtc_file %}faint{% endif %}">{{ lot.mtc_file|default:"—" }}</div></div>
+        </div>
+
+        {% if lot.chemistry %}
+          <div class="card-b" style="padding:11px 16px">
+            <div class="row wrap" style="gap:6px">
+              <span class="tiny faint" style="margin-right:4px">Certified chemistry vs {{ lot.grade }} spec:</span>
+              {% for element, actual, spec, ok in lot.chemistry %}
+                <span class="chip {% if ok %}green{% else %}red{% endif %}" style="font-size:8.5px" title="spec {{ spec }}">
+                  {{ element }} {{ actual }}{% if not ok %} · spec {{ spec }}{% endif %}
+                </span>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+
+        {% if lot.note %}
+          <div style="padding:0 16px 11px">
+            <div class="callout {% if lot.status == 'quarantined' %}red{% elif lot.status == 'lab' %}blue{% else %}amber{% endif %}" style="font-size:11px">
+              {% if lot.status == 'quarantined' %}{% icon "lock" 13 %}{% elif lot.status == 'lab' %}{% icon "drop" 13 %}{% else %}{% icon "alert" 13 %}{% endif %}
+              <div>{% if lot.sncr %}<b>{{ lot.sncr.no }}</b> · {% endif %}{{ lot.note }}</div>
+            </div>
+          </div>
+        {% endif %}
+
+        <div class="intake-foot">
+          {% if lot.status == 'awaiting' %}
+            {% if can_release %}
+              <button class="btn primary sm" data-modal="verify-{{ lot.pk }}">{% icon "shieldCheck" 13 %} Review MTC</button>
+              <form method="post" action="{% url 'factoryops:send_lab' lot.pk %}">{% csrf_token %}
+                <button class="btn sm" type="submit">{% icon "drop" 13 %} Send to lab</button>
+              </form>
+              <button class="btn danger sm" data-modal="reject-{{ lot.pk }}">{% icon "xCircle" 13 %} Reject intake</button>
+            {% else %}
+              <button class="btn primary sm" disabled title="Only Quality Engineering can release material">{% icon "lock" 13 %} Review MTC</button>
+              <button class="btn sm" disabled title="Only Quality Engineering can release material">{% icon "lock" 13 %} Send to lab</button>
+              <button class="btn danger sm" disabled title="Only Quality Engineering can release material">{% icon "lock" 13 %} Reject intake</button>
+            {% endif %}
+          {% elif lot.status == 'lab' %}
+            {% if can_release %}
+              <button class="btn primary sm" data-modal="lab-{{ lot.pk }}">{% icon "pen" 13 %} Enter lab result</button>
+              <button class="btn danger sm" data-modal="reject-{{ lot.pk }}">{% icon "xCircle" 13 %} Reject intake</button>
+            {% else %}
+              <button class="btn primary sm" disabled title="Only Quality Engineering can enter a lab verdict">{% icon "lock" 13 %} Enter lab result</button>
+              <button class="btn danger sm" disabled title="Only Quality Engineering can reject material">{% icon "lock" 13 %} Reject intake</button>
+            {% endif %}
+          {% elif lot.status == 'released' %}
+            <span class="chip green" style="font-size:9px">{% icon "qr" 9 %} Barcode tags printed · store bin R-{{ lot.pk|stringformat:"03d" }}</span>
+            <button class="btn sm" onclick="window.print()">{% icon "print" 13 %} Print labels</button>
+          {% else %}
+            <a class="btn sm" href="#sncr-{{ lot.sncr.pk }}" style="text-decoration:none">{% icon "file" 13 %} View SNCR</a>
+            <button class="btn sm" disabled>{% icon "lock" 13 %} Issue stock</button>
+          {% endif %}
+          <span class="tiny faint" style="margin-left:auto">{% if not can_release and lot.status != 'released' and lot.status != 'quarantined' %}Quality Engineering only · {% endif %}{% if lot.status == 'awaiting' %}Awaiting quality clearance{% elif lot.status == 'lab' %}Stock cannot be issued until the lab clears it{% elif lot.status == 'released' %}Issued to store room{% else %}Quarantine bin Q-02{% endif %}</span>
+        </div>
+      </div>
+
+      {% if lot.status != 'released' and lot.status != 'quarantined' %}
+      <div class="modal-scrim" id="verify-{{ lot.pk }}">
+        <form class="modal" method="post" action="{% url 'factoryops:verify_lot' lot.pk %}">
+          {% csrf_token %}
+          <div class="modal-h">
+            <div class="mh-ico">{% icon "shieldCheck" 17 %}</div>
+            <div class="grow"><h3>Verify mill test certificate</h3><div class="mh-sub">{{ lot.no }} · heat {{ lot.heat_no }} · {{ lot.grade }} · {{ lot.supplier }}</div></div>
+            <button type="button" class="icon-btn" data-close>{% icon "x" 15 %}</button>
+          </div>
+          <div class="modal-b">
+            <div class="card" style="margin-bottom:14px">
+              <div class="card-b" style="display:flex;gap:12px;align-items:center">
+                <span class="alert-ico blue" style="width:38px;height:38px">{% icon "file" 17 %}</span>
+                <div class="grow"><div class="b small">{{ lot.mtc_file|default:"No certificate attached" }}</div>
+                  <div class="tiny faint">Mill test certificate · heat {{ lot.heat_no }} · {{ lot.supplier }}</div></div>
+                <span class="chip {% if lot.mtc_file %}green{% else %}red{% endif %}" style="font-size:9px">{% if lot.mtc_file %}Readable{% else %}Missing{% endif %}</span>
+              </div>
+            </div>
+            {% if lot.chemistry %}
+              <div class="tbl-wrap" style="margin-bottom:14px">
+                <table class="tbl">
+                  <thead><tr><th>Element</th><th>Certified</th><th>Spec</th><th>Check</th></tr></thead>
+                  <tbody>
+                    {% for element, actual, spec, ok in lot.chemistry %}
+                      <tr><td class="b">{{ element }}</td><td class="mono">{{ actual }}</td><td class="mono muted">{{ spec }}</td>
+                        <td>{% if ok %}<span class="chip green" style="font-size:8.5px">{% icon "check" 8 %} In spec</span>{% else %}<span class="chip red" style="font-size:8.5px">{% icon "x" 8 %} Out of spec</span>{% endif %}</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% endif %}
+            <div class="col" style="gap:9px">
+              <label class="row" style="gap:9px;font-size:11.5px;color:var(--muted);cursor:pointer">
+                <input type="checkbox" name="ack_mtc" style="accent-color:#16D3A8;width:15px;height:15px">
+                I confirm the mill test certificate is readable and belongs to heat {{ lot.heat_no }}.
+              </label>
+              <label class="row" style="gap:9px;font-size:11.5px;color:var(--muted);cursor:pointer">
+                <input type="checkbox" name="ack_heat" style="accent-color:#16D3A8;width:15px;height:15px">
+                The heat number on the physical bundle tags matches the certificate.
+              </label>
+            </div>
+          </div>
+          <div class="modal-f">
+            <button type="button" class="btn" data-close>Cancel</button>
+            <button class="btn primary" type="submit">{% icon "check" 14 %} Release to stores</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-scrim" id="reject-{{ lot.pk }}">
+        <form class="modal" method="post" action="{% url 'factoryops:reject_lot' lot.pk %}">
+          {% csrf_token %}
+          <div class="modal-h">
+            <div class="mh-ico" style="background:rgba(255,93,108,.13);color:#FF9AA4">{% icon "lock" 17 %}</div>
+            <div class="grow"><h3>Reject intake &amp; raise SNCR</h3><div class="mh-sub">{{ lot.no }} · heat {{ lot.heat_no }}</div></div>
+            <button type="button" class="icon-btn" data-close>{% icon "x" 15 %}</button>
+          </div>
+          <div class="modal-b">
+            <div class="callout red" style="margin-bottom:14px">{% icon "lock" 15 %}
+              <div>The lot moves to <b>supplier quarantine</b> and a supplier non-conformance report is raised automatically. That stock can never be issued to a work order.</div>
+            </div>
+            <div class="field"><label>Rejection reason</label>
+              <select class="input" name="reason">
+                <option>No valid MTC supplied — intake rejected</option>
+                <option>Chemistry outside the grade specification</option>
+                <option>Heat number mismatch between certificate and bundle tags</option>
+                <option>Physical damage / dimensional undersize</option>
+              </select>
+            </div>
+            <label class="row" style="gap:9px;font-size:11.5px;color:var(--muted);cursor:pointer">
+              <input type="checkbox" name="ack" style="accent-color:#FF5D6C;width:15px;height:15px">
+              I confirm the lot is physically moved to quarantine bin Q-02.
+            </label>
+          </div>
+          <div class="modal-f">
+            <button type="button" class="btn" data-close>Cancel</button>
+            <button class="btn solid-red" type="submit">{% icon "lock" 14 %} Reject &amp; raise SNCR</button>
+          </div>
+        </form>
+      </div>
+      {% endif %}
+
+      {% if lot.status == 'lab' %}
+      <div class="modal-scrim" id="lab-{{ lot.pk }}">
+        <form class="modal" method="post" action="{% url 'factoryops:lab_result' lot.pk %}">
+          {% csrf_token %}
+          <div class="modal-h">
+            <div class="mh-ico" style="background:rgba(91,149,255,.13);color:#9CC0FF">{% icon "drop" 17 %}</div>
+            <div class="grow"><h3>Enter laboratory result</h3><div class="mh-sub">{{ lot.no }} · {{ lot.grade }} · spectro analysis</div></div>
+            <button type="button" class="icon-btn" data-close>{% icon "x" 15 %}</button>
+          </div>
+          <div class="modal-b">
+            <div class="field"><label>Result</label>
+              <select class="input" name="result">
+                <option value="pass">Pass — chemistry &amp; mechanicals within specification</option>
+                <option value="fail">Fail — outside specification</option>
+              </select>
+            </div>
+            <div class="field"><label>Lab remarks</label>
+              <textarea class="input" name="detail" rows="3">Spectro: C 0.19, Mn 1.24, Cr 1.12 — all within 20MnCr5 specification. Hardness 187 HB.</textarea>
+            </div>
+          </div>
+          <div class="modal-f">
+            <button type="button" class="btn" data-close>Cancel</button>
+            <button class="btn primary" type="submit">{% icon "check" 14 %} Record result</button>
+          </div>
+        </form>
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  <div class="dash-col">
+    <div class="card">
+      <div class="card-h"><h3>{% icon "shieldCheck" 15 %} Intake verification rules</h3><span class="sub">server-enforced</span></div>
+      <div class="check-list">
+        <div class="check"><span class="ck ok">{% icon "check" 11 %}</span><div><div class="ck-label">Readable MTC attached</div><div class="ck-sub">A lot cannot be released without a certificate</div></div></div>
+        <div class="check"><span class="ck ok">{% icon "check" 11 %}</span><div><div class="ck-label">Heat number cross-checked</div><div class="ck-sub">Certificate heat must match the bundle tags</div></div></div>
+        <div class="check"><span class="ck ok">{% icon "check" 11 %}</span><div><div class="ck-label">Chemistry against grade spec</div><div class="ck-sub">Out-of-spec carbon blocks release</div></div></div>
+        <div class="check"><span class="ck ok">{% icon "check" 11 %}</span><div><div class="ck-label">Barcode tagging</div><div class="ck-sub">Water-resistant labels issued before store issue</div></div></div>
+        <div class="check"><span class="ck ok">{% icon "check" 11 %}</span><div><div class="ck-label">Quarantine lock</div><div class="ck-sub">SNCR stock can never be issued to a work order</div></div></div>
+      </div>
+    </div>
+
+    {% if sample %}
+    <div class="card">
+      <div class="card-h"><h3>{% icon "qr" 15 %} Store-room label</h3><span class="sub">weather-resistant barcode tag</span></div>
+      <div class="card-b" style="background:#fff;color:#0B1220;border-radius:0 0 13px 13px">
+        <div class="row between" style="align-items:flex-start">
+          <div>
+            <div style="font-size:8.5px;font-weight:800;letter-spacing:.09em;color:#0F766E">ZAPUZA · RAW STORE</div>
+            <div style="font-size:20px;font-weight:800;margin-top:2px">{{ sample.heat_no }}</div>
+            <div style="font-size:10px;color:#475569;margin-top:2px">Grade {{ sample.grade }}<br>Supplier {{ sample.supplier }}<br>Qty {{ sample.qty_kg }} kg</div>
+          </div>
+          {% qr sample.heat_no 64 %}
+        </div>
+        <div style="margin-top:8px">{% barcode sample.heat_no 250 38 %}</div>
+        <div class="tiny mono" style="color:#475569;margin-top:3px">{{ sample.heat_no }}-{{ sample.grade }}</div>
+      </div>
+      <div class="dc-foot"><button class="btn sm" style="margin-left:auto" onclick="window.print()">{% icon "print" 13 %} Print label set</button></div>
+    </div>
+    {% endif %}
+
+    <div class="card" id="sncr-list">
+      <div class="card-h"><h3>{% icon "alert" 15 %} Supplier non-conformance</h3><span class="sub">{{ sncrs|length }} on record</span></div>
+      <div class="card-b tight">
+        {% for s in sncrs %}
+          <div class="alert-row" style="cursor:default" id="sncr-{{ s.pk }}">
+            <div class="grow">
+              <div class="row" style="gap:7px"><span class="b small mono">{{ s.no }}</span><span class="tiny faint">{{ s.supplier }} · {{ s.heat }}</span></div>
+              <div class="tiny faint" style="margin-top:2px">{{ s.issue }}</div>
+              <div class="tiny faint" style="margin-top:2px">{{ s.action }}</div>
+            </div>
+            <span class="chip {% if s.status == 'Open' %}red{% elif s.status == 'Under review' %}amber{% else %}gray{% endif %}" style="font-size:8.5px">{{ s.status }}</span>
+          </div>
+        {% empty %}
+          <div class="card-b muted small">No supplier non-conformances raised.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

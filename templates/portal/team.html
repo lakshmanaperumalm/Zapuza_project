@@ -1,0 +1,61 @@
+{% extends "base.html" %}{% load ui %}
+{% block page %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Team &amp; Roles</h1>
+    <p class="page-sub">Six role presets with built-in safeguards — the server checks the role, not the screen.</p>
+  </div>
+  <div class="row wrap"><span class="chip green" style="font-size:9.5px">{% icon "users" 10 %} {{ on_shift|length }} online on shift A</span></div>
+</div>
+
+<div class="grid3">
+  {% for p in people %}
+    <div class="card">
+      <div class="card-b" style="display:flex;gap:11px;align-items:flex-start">
+        <span class="avatar" style="width:34px;height:34px;font-size:12px">{{ p.initials }}</span>
+        <div class="grow" style="min-width:0">
+          <div class="b small">{{ p.name }}</div>
+          <div class="tiny faint">{{ p.get_role_display }}</div>
+          <div class="tiny faint mono" style="margin-top:3px">{{ p.device }} · {{ p.ip }}</div>
+        </div>
+        <span class="chip {% if p.online %}green{% else %}gray{% endif %}" style="font-size:8.5px">{% if p.online %}<span class="dot"></span>Online{% else %}Offline{% endif %}</span>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="section-title">Role safeguards</div>
+<div class="card">
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Role</th><th>Tablet</th><th>Approvals</th><th>Template studio</th><th>Intake release</th><th>Dispatch</th></tr></thead>
+    <tbody>
+      {% for row in matrix %}
+        <tr><td class="b">{{ row.role }}</td>
+          {% for cell in row.cells %}<td><span class="chip {% if cell == 'Full' %}green{% elif cell == 'Approve' %}amber{% elif cell == 'View' %}blue{% else %}gray{% endif %}" style="font-size:8.5px">{{ cell }}</span></td>{% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+
+<div class="section-title">Digital shift handover log</div>
+<div class="card">
+  <div class="card-b tight">
+    {% for h in handovers %}
+      <div class="alert-row" style="cursor:default;align-items:flex-start">
+        <span class="alert-ico" style="background:rgba(22,211,168,.1);color:#6EE7B7">{% icon "pen" 14 %}</span>
+        <div class="grow">
+          <div class="row wrap" style="gap:8px">
+            <span class="b small">{{ h.shift_from }} → {{ h.shift_to }}</span>
+            <span class="chip green" style="font-size:8.5px">Signed {{ h.created_at|time:"H:i" }}</span>
+            <span class="tiny faint">by {{ h.signed_by }}</span>
+          </div>
+          <div class="tiny" style="color:#A9B8CC;margin-top:3px">{{ h.note }}</div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="card-b muted small">No handovers signed yet.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

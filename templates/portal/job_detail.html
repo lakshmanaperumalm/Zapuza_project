@@ -1,0 +1,107 @@
+{% extends "base.html" %}{% load ui %}
+{% block page %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">{{ wo.wo_no }} · {{ wo.part.name }}</h1>
+    <p class="page-sub">{{ wo.part.part_no }} · {{ wo.part.customer }} · {{ wo.qty }} pcs · due {{ wo.due_text }}</p>
+  </div>
+  <div class="row wrap">
+    <a class="btn" href="{% url 'factoryops:jobs' %}">{% icon "chevL" 14 %} All travelers</a>
+    {% if wo.status == 'READY_DISPATCH' %}
+      <a class="btn primary" href="{% url 'factoryops:dispatch' %}" style="text-decoration:none">{% icon "truck" 15 %} Dispatch</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="kpis four">
+  <div class="kpi"><div class="k-label">Heat lot</div><div class="k-value" style="font-size:22px">{{ wo.heat.heat_no|default:"—" }}</div><div class="k-foot">{{ wo.heat.grade|default:"" }} · {{ wo.heat.supplier|default:"" }}</div></div>
+  <div class="kpi"><div class="k-label">Produced</div><div class="k-value">{{ wo.qty_done }}<small>/{{ wo.qty }}</small></div><div class="k-foot">{{ wo.qty_scrap }} scrapped</div></div>
+  <div class="kpi"><div class="k-label">Operations</div><div class="k-value">{{ wo.ops_done }}<small>/{{ wo.ops_total }}</small></div><div class="k-foot">ladder signed off</div></div>
+  <div class="kpi"><div class="k-label">Status</div><div class="k-value" style="font-size:17px;letter-spacing:0">{{ wo.get_status_display }}</div><div class="k-foot">{{ wo.operator }} · {{ wo.line }}</div></div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <div class="card-h"><h3>{% icon "route" 15 %} Digital traveler — ladder lock</h3><span class="sub">operations unlock sequentially</span></div>
+    <div class="card-b tight">
+      {% for op in ops %}
+        <div class="row" style="gap:12px;padding:11px 16px;border-bottom:1px solid rgba(148,163,184,.07);align-items:flex-start">
+          <span class="ck {% if op.status == 'done' %}ok{% elif op.status == 'blocked' %}bad{% elif op.status == 'active' or op.status == 'hold' %}wait{% else %}wait{% endif %}"
+                style="{% if op.status == 'active' %}background:rgba(91,149,255,.16);color:#9CC0FF{% endif %}">
+            {% if op.status == 'done' %}{% icon "check" 11 %}{% elif op.status == 'blocked' %}{% icon "x" 11 %}{% elif op.status == 'hold' %}{% icon "pause" 11 %}{% else %}{{ op.seq|add:1 }}{% endif %}
+          </span>
+          <div class="grow">
+            <div class="row wrap" style="gap:8px">
+              <span class="b small">Op {{ op.seq }}0 · {{ op.name }}</span>
+              {% if op.status == 'done' %}<span class="chip green" style="font-size:8.5px">Signed</span>
+              {% elif op.status == 'active' %}<span class="chip blue" style="font-size:8.5px">In progress</span>
+              {% elif op.status == 'hold' %}<span class="chip amber" style="font-size:8.5px">Hold</span>
+              {% elif op.status == 'blocked' %}<span class="chip red" style="font-size:8.5px">Blocked</span>
+              {% else %}<span class="chip gray" style="font-size:8.5px">Pending</span>{% endif %}
+            </div>
+            <div class="tiny faint" style="margin-top:2px">{% if op.machine %}{{ op.machine }} · {% endif %}{{ op.meta|default:"—" }}</div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="dash-col">
+    <div class="card">
+      <div class="card-h"><h3>{% icon "shield" 15 %} Inspections</h3><span class="sub">{{ wo.inspections.count }} on record</span></div>
+      <div class="card-b tight">
+        {% for i in wo.inspections.all %}
+          <div class="alert-row" style="cursor:default">
+            <span class="alert-ico {% if i.status == 'approved' %}green{% elif i.status == 'pending' %}amber{% else %}red{% endif %}"
+                  style="background:{% if i.status == 'approved' %}rgba(52,211,153,.12){% elif i.status == 'pending' %}rgba(246,179,60,.12){% else %}rgba(255,93,108,.12){% endif %}">
+              {% icon "clipboard" 14 %}</span>
+            <div class="grow">
+              <div class="b small">{{ i.op }}</div>
+              <div class="tiny faint">{{ i.inspector }} · {{ i.submitted_at|date:"d M H:i" }}</div>
+            </div>
+            <span class="chip {% if i.status == 'approved' %}green{% elif i.status == 'pending' %}amber{% else %}red{% endif %}" style="font-size:8.5px">{{ i.get_status_display }}</span>
+          </div>
+        {% empty %}
+          <div class="card-b muted small">No inspections recorded for this order yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h3>{% icon "lock" 15 %} Holds &amp; shipments</h3></div>
+      <div class="card-b tight">
+        {% for h in wo.holds.all %}
+          <div class="alert-row" style="cursor:default">
+            <span class="alert-ico red" style="background:rgba(255,93,108,.12);color:#FF9AA4">{% icon "lock" 14 %}</span>
+            <div class="grow"><div class="b small">{{ h.reason|truncatechars:52 }}</div>
+              <div class="tiny faint">{{ h.get_disposition_display|default:"Awaiting MRB" }} · {{ h.since }}</div></div>
+          </div>
+        {% endfor %}
+        {% for s in wo.shipments.all %}
+          <div class="alert-row" style="cursor:default">
+            <span class="alert-ico blue" style="background:rgba(91,149,255,.12);color:#9CC0FF">{% icon "truck" 14 %}</span>
+            <div class="grow"><div class="b small">{{ s.no }} · {{ s.customer }}</div>
+              <div class="tiny faint">{{ s.qty }} pcs · crate {{ s.crate }}</div></div>
+            <a class="btn ghost sm" href="{% url 'factoryops:gate_pass' s.pk %}" style="text-decoration:none">{% icon "chevR" 13 %}</a>
+          </div>
+        {% empty %}
+          {% if not wo.holds.all %}<div class="card-b muted small">No holds and no shipment raised for this order.</div>{% endif %}
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h3>{% icon "branch" 15 %} Lineage</h3></div>
+      <div class="card-b">
+        <div class="row wrap" style="gap:6px">
+          <span class="chip gray" style="font-size:9px">{% icon "file" 9 %} {{ wo.heat.mtc_file|default:"MTC" }}</span>{% icon "chevR" 10 %}
+          <span class="chip blue" style="font-size:9px">{{ wo.heat.heat_no|default:"—" }}</span>{% icon "chevR" 10 %}
+          <span class="chip amber" style="font-size:9px">{{ wo.wo_no }}</span>{% icon "chevR" 10 %}
+          <span class="chip gray" style="font-size:9px">Op {{ wo.stage_index }}0</span>
+        </div>
+        <div class="tiny faint" style="margin-top:9px">Operator {{ wo.operator }} · line {{ wo.line }} · priority {{ wo.priority }}.</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

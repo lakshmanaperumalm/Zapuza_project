@@ -1,0 +1,32 @@
+{% load static ui %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page_title|default:"FactoryOps" }} · Zapuza FactoryOps</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <link rel="stylesheet" href="{% static 'css/django.css' %}">
+</head>
+<body>
+<div class="portal">
+  {% include "partials/_sidebar.html" %}
+  <div class="main">
+    {% include "partials/_topbar.html" %}
+    <div class="page">
+      {% block page %}{% endblock %}
+    </div>
+  </div>
+</div>
+<div id="toast-root">
+  {% for m in messages %}
+    <div class="toast {% if m.tags == 'warning' %}warn{% elif m.tags == 'error' %}error{% else %}{{ m.tags }}{% endif %}">
+      <span class="tico">{% if m.tags == 'error' %}{% icon "alert" 15 %}{% elif m.tags == 'warning' %}{% icon "alert" 15 %}{% else %}{% icon "checkCircle" 15 %}{% endif %}</span>
+      <span>{{ m }}</span>
+    </div>
+  {% endfor %}
+</div>
+<div id="modal-root"></div>
+<script src="{% static 'js/app.js' %}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

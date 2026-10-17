@@ -1,0 +1,98 @@
+{% extends "base.html" %}{% load ui %}
+{% block page %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Implementation Rollout Plan</h1>
+    <p class="page-sub">A structured eight-week path from infrastructure setup to full go-live — deploy on one pilot line without disturbing production.</p>
+  </div>
+  <div class="row wrap">
+    <button class="btn" onclick="window.print()">{% icon "download" 15 %} Export plan</button>
+    <a class="btn primary" href="{% url 'factoryops:demo' %}" style="text-decoration:none">{% icon "calendar" 15 %} Demo script</a>
+  </div>
+</div>
+
+<div class="kpis four">
+  <div class="kpi"><div class="k-label">Programme length</div><div class="k-value">8 <small>weeks</small></div><div class="k-foot">Four phases · weekly gates</div>{% spark "1,2,3,4,5,6,7" "#16D3A8" %}</div>
+  <div class="kpi"><div class="k-label">Current phase</div><div class="k-value" style="font-size:20px">Phase 2</div><div class="k-foot">Champion training &amp; dry run</div>{% spark "1,2,2,2,2,2,2" "#5B95FF" %}</div>
+  <div class="kpi"><div class="k-label">Plan progress</div><div class="k-value">40<small>%</small></div><div class="k-foot">Phase 1 complete · Phase 2 at 65%</div>{% spark "8,14,22,28,33,37,40" "#A78BFA" %}</div>
+  <div class="kpi"><div class="k-label">Go-live readiness</div><div class="k-value">72<small>%</small></div><div class="k-foot">Open items: 5 · owners assigned</div>{% spark "40,48,55,62,66,70,72" "#F6B33C" %}</div>
+</div>
+
+<div class="card" style="margin-bottom:14px">
+  <div class="card-h"><h3>{% icon "calendar" 15 %} Eight-week timeline</h3><span class="sub">green = complete · blue = in progress · dashed = planned</span></div>
+  <div class="card-b">
+    <div class="gantt">
+      <div class="gantt-head"><div>Phase</div>{% for w in "12345678"|make_list %}<div>W{{ w }}</div>{% endfor %}</div>
+      {% for p in phases %}
+        <div class="gantt-row">
+          <div class="gantt-label">Phase {{ p.n }} — {{ p.name }}<span class="tiny">{{ p.weeks }} · {{ p.owner }}</span></div>
+          <div class="gantt-track" style="grid-column:2 / span 8;display:grid;grid-template-columns:repeat(8,1fr);position:relative">
+            {% for w in "12345678"|make_list %}<div class="gcell" style="border-left:1px solid rgba(148,163,184,.08)"></div>{% endfor %}
+            <div class="gbar {{ p.status }}" style="grid-column:{{ p.start }} / span {{ p.span }}">
+              {% if p.status == 'done' %}{% icon "check" 11 %}{% endif %} Phase {{ p.n }} · {{ p.progress }}%
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="stack">
+    {% for p in phases %}
+      <div class="card">
+        <div class="card-h">
+          <span class="phase-num">{{ p.n }}</span>
+          <h3>{{ p.name }}</h3>
+          <span class="chip {% if p.status == 'done' %}green{% elif p.status == 'active' %}blue{% else %}gray{% endif %}" style="font-size:8.5px">
+            {% if p.status == 'done' %}Complete{% elif p.status == 'active' %}In progress{% else %}Planned{% endif %}</span>
+          <span class="sub">{{ p.weeks }} · {{ p.owner }}</span>
+        </div>
+        <div class="card-b">
+          <p class="small muted" style="margin-bottom:10px">{{ p.focus }}</p>
+          <div class="col" style="gap:5px">
+            {% for w in p.work %}
+              <div class="row" style="gap:8px;align-items:flex-start;font-size:11.6px;color:#C3D0E2">
+                <span style="color:{% if p.status == 'done' %}#6EE7B7{% elif p.status == 'active' %}#9CC0FF{% else %}#475569{% endif %};flex:none;margin-top:1px">
+                  {% if p.status == 'done' %}{% icon "checkCircle" 12 %}{% else %}{% icon "clock" 12 %}{% endif %}</span>
+                <span>{{ w }}</span>
+              </div>
+            {% endfor %}
+          </div>
+          <div class="callout {% if p.status == 'done' %}green{% elif p.status == 'active' %}blue{% else %}amber{% endif %}" style="margin-top:11px">
+            {% icon "target" 14 %}<div><b>Exit criteria:</b> {{ p.exit }}</div>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="dash-col">
+    <div class="card">
+      <div class="card-h"><h3>{% icon "target" 15 %} Go-live gate</h3><span class="sub">checked by Plant Manager</span></div>
+      <div class="check-list">
+        <div class="check"><span class="ck ok">{% icon "check" 11 %}</span><div><div class="ck-label">Industrial Wi-Fi coverage</div><div class="ck-sub">Both shopfloors ≥ −65 dBm at every station</div></div></div>
+        <div class="check"><span class="ck ok">{% icon "check" 11 %}</span><div><div class="ck-label">Every station QR plate</div><div class="ck-sub">Scanned successfully from a tablet</div></div></div>
+        <div class="check"><span class="ck ok">{% icon "check" 11 %}</span><div><div class="ck-label">Master data complete</div><div class="ck-sub">Machines · gauges · templates · parts</div></div></div>
+        <div class="check"><span class="ck wait">{% icon "clock" 11 %}</span><div><div class="ck-label">Champions certified</div><div class="ck-sub">6 floor champions + QE team</div></div></div>
+        <div class="check"><span class="ck wait">{% icon "clock" 11 %}</span><div><div class="ck-label">Pilot line sign-off</div><div class="ck-sub">Two weeks parallel run · variance below 1%</div></div></div>
+        <div class="check"><span class="ck wait">{% icon "clock" 11 %}</span><div><div class="ck-label">Paper decommissioning</div><div class="ck-sub">Clipboards and traveler cards removed</div></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h3>{% icon "alert" 15 %} Rollout risks</h3></div>
+      <div class="card-b tight">
+        {% for r, level, mitigation in risks %}
+          <div style="padding:10px 15px;border-bottom:1px solid rgba(148,163,184,.07)">
+            <div class="row between"><span class="b" style="font-size:11.6px">{{ r }}</span>
+              <span class="chip {% if level == 'High' %}red{% elif level == 'Medium' %}amber{% else %}green{% endif %}" style="font-size:8.5px">{{ level }}</span></div>
+            <div class="tiny faint" style="margin-top:2px">{{ mitigation }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

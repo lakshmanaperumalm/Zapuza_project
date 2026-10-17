@@ -1,0 +1,57 @@
+{% extends "base.html" %}{% load ui %}
+{% block page %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Dispatch Gates</h1>
+    <p class="page-sub">Every gate pass is computed live from three interlocks — operations signed, hold times satisfied, final PDI approved.</p>
+  </div>
+  <div class="row wrap">
+    <span class="chip green" style="font-size:9.5px">{% icon "unlock" 10 %} {{ shipments|length }} shipments tracked</span>
+  </div>
+</div>
+
+<div class="callout blue" style="margin-bottom:14px">{% icon "shield" 15 %}
+  <div><b>Interlock rule.</b> The gate pass cannot be generated while any rule is red. The warehouse sees exactly which rule failed — not a generic “document not ready”.</div>
+</div>
+
+<div class="grid2 even">
+{% for s in shipments %}
+  <div class="card">
+    <div class="dc-top">
+      <div class="grow">
+        <div class="row wrap" style="gap:8px">
+          <span class="b" style="font-size:13px">{{ s.no }}</span>
+          {% if s.clear %}<span class="chip green" style="font-size:9px">{% icon "unlock" 8 %} Gate open</span>
+          {% else %}<span class="chip red" style="font-size:9px">{% icon "lock" 8 %} Interlocked</span>{% endif %}
+          {% if s.status == 'shipped' %}<span class="chip blue" style="font-size:9px">Shipped</span>{% endif %}
+        </div>
+        <div class="tiny faint" style="margin-top:3px">{{ s.part_name }} · {{ s.customer }} · {{ s.qty }} pcs · PO {{ s.po }}</div>
+        <div class="dc-route">
+          {% for i in "123456789"|make_list %}
+            <span style="width:16px;height:4px;border-radius:2px;background:{% if forloop.counter0 < s.wo.ops_done %}rgba(52,211,153,.75){% else %}rgba(148,163,184,.2){% endif %}"></span>
+          {% endfor %}
+        </div>
+      </div>
+      <div style="text-align:right;flex:none">
+        <div class="tiny faint">Crate</div>
+        <div class="tiny mono">{{ s.crate }}</div>
+      </div>
+    </div>
+    <div class="check-list">
+      {% for c in s.checks %}
+        <div class="check">
+          <span class="ck {% if c.ok %}ok{% else %}bad{% endif %}">{% if c.ok %}{% icon "check" 11 %}{% else %}{% icon "x" 11 %}{% endif %}</span>
+          <div><div class="ck-label">{{ c.label }}</div><div class="ck-sub">{{ c.sub }}</div></div>
+        </div>
+      {% endfor %}
+    </div>
+    <div class="dc-foot">
+      <span class="tiny faint" style="margin-right:auto">{% if s.vehicle %}Vehicle {{ s.vehicle }}{% else %}Vehicle not assigned{% endif %}</span>
+      <a class="btn {% if s.clear %}primary{% else %}danger{% endif %} sm" href="{% url 'factoryops:gate_pass' s.pk %}" style="text-decoration:none">
+        {% if s.clear %}{% icon "print" 13 %} Gate pass{% else %}{% icon "lock" 13 %} Gate pass{% endif %}
+      </a>
+    </div>
+  </div>
+{% endfor %}
+</div>
+{% endblock %}

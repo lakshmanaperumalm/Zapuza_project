@@ -1,0 +1,28 @@
+{% load ui %}
+<div class="topbar">
+  <div class="crumb">
+    {% if request.resolver_match.url_name != 'dashboard' %}
+      <a class="btn ghost sm" href="{% url 'factoryops:dashboard' %}" title="Back to dashboard">{% icon "chevL" 14 %}</a>
+    {% endif %}
+    <span>Unit 1</span>{% icon "chevR" 11 %}
+    <span>{{ nav_group|default:"Operations" }}</span>{% icon "chevR" 11 %}
+    <span class="cur">{{ page_title|default:"Dashboard" }}</span>
+  </div>
+  <div class="topbar-right">
+    <div class="shift-chip">{% icon "users" 13 %} Shift A <span class="faint">·</span> 06:00–14:00</div>
+    <div class="live-clock">{% icon "clock" 13 %} <span class="mono" id="live-clock">--:--:--</span></div>
+    <a class="icon-btn bordered" href="{% url 'factoryops:audit' %}" title="Alerts & notifications">
+      {% icon "bell" 16 %}<span class="bell-dot"></span>
+    </a>
+    {% if employee %}
+      <div class="user-chip">
+        <span class="avatar">{{ employee.initials }}</span>
+        <div class="user-meta">
+          <div class="n">{{ employee.name }}</div>
+          <div class="r">{{ employee.get_role_display }}</div>
+        </div>
+        <a class="btn ghost sm" href="{% url 'factoryops:logout' %}" title="Sign out and pick another demo user" style="text-decoration:none;margin-left:6px;font-size:10.5px">{% icon "logout" 13 %} Switch user</a>
+      </div>
+    {% endif %}
+  </div>
+</div>

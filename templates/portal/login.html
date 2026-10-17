@@ -1,0 +1,61 @@
+{% load static ui %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · Zapuza FactoryOps</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <link rel="stylesheet" href="{% static 'css/django.css' %}">
+</head>
+<body style="background:#060C16">
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:34px 18px">
+  <div style="width:min(880px,100%)">
+    <div class="row between" style="margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <div class="row" style="gap:11px">
+        <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true">
+          <defs><linearGradient id="zg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2BE8BE"/><stop offset="1" stop-color="#0E9C86"/></linearGradient></defs>
+          <rect width="40" height="40" rx="10" fill="url(#zg)"/>
+          <path d="M11 12h18l-10.4 9.4H29L18 30l2.6-7H11l4.8-4.4H11z" fill="#042A23" opacity=".92"/>
+        </svg>
+        <div><div style="font-size:15px;font-weight:750">Zapuza <span style="color:var(--teal)">FactoryOps</span></div>
+          <div class="tiny faint">Unit 1 · Coimbatore · Shift A</div></div>
+      </div>
+      <a class="btn ghost sm" href="{% url 'factoryops:cover' %}" style="text-decoration:none">{% icon "chevL" 13 %} Back to cover</a>
+    </div>
+
+    <div class="card">
+      <div class="card-h" style="padding:16px 20px">
+        <h3 style="font-size:14px">{% icon "key" 16 %} Choose a demo user</h3>
+        <span class="sub">Django authentication · password <span class="mono">zapuza</span></span>
+      </div>
+      <div class="card-b">
+        <p class="small muted" style="margin-bottom:14px;line-height:1.6">
+          Each user carries a real Django group and role. The rules on the next screens are enforced by the server against that role —
+          try approving an inspection as a Machine Operator and the system will refuse.
+        </p>
+        <div class="grid3">
+          {% for p in people %}
+            <form method="post" style="display:contents">
+              {% csrf_token %}
+              <input type="hidden" name="username" value="{{ p.user.username }}">
+              <input type="hidden" name="next" value="{{ next }}">
+              <button class="card-b" type="submit"
+                      style="text-align:left;background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:12px;cursor:pointer;color:inherit;display:flex;gap:11px;align-items:flex-start">
+                <span class="avatar" style="width:34px;height:34px;font-size:12px">{{ p.initials }}</span>
+                <span class="grow" style="min-width:0">
+                  <span class="b small" style="display:block">{{ p.name }}</span>
+                  <span class="tiny faint" style="display:block;margin-top:2px">{{ p.get_role_display }}</span>
+                  <span class="tiny faint mono" style="display:block;margin-top:5px">{{ p.device }} · {{ p.ip }}</span>
+                </span>
+                {% icon "chevR" 14 %}
+              </button>
+            </form>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <div class="tiny faint center" style="text-align:center;margin-top:16px">Demo credentials only · data resets with <span class="mono">python manage.py seed_demo</span></div>
+  </div>
+</div>
+</body>
+</html>

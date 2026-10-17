@@ -1,0 +1,32 @@
+{% load ui %}
+<aside class="sidebar">
+  <div class="sb-brand">
+    <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true">
+      <defs><linearGradient id="zg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2BE8BE"/><stop offset="1" stop-color="#0E9C86"/></linearGradient></defs>
+      <rect width="40" height="40" rx="10" fill="url(#zg)"/>
+      <path d="M11 12h18l-10.4 9.4H29L18 30l2.6-7H11l4.8-4.4H11z" fill="#042A23" opacity=".92"/>
+    </svg>
+    <div class="brand-text">
+      <div class="brand-name">Zapuza <span style="color:var(--teal)">Ops</span></div>
+      <div class="brand-sub">Factory QC Portal</div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    {% for group in nav_groups %}
+      <div class="sb-section">{{ group.name }}</div>
+      {% for item in group.items %}
+        <a class="nav-item {% if active == item.key %}active{% endif %}" href="{{ item.url }}" title="{{ item.label }}">
+          {% icon item.icon 16 %}<span>{{ item.label }}</span>
+          {% if item.badge %}<span class="nav-badge {% if item.key == 'holds' %}red{% endif %}">{{ item.badge }}</span>{% endif %}
+        </a>
+      {% endfor %}
+    {% endfor %}
+  </nav>
+  <div class="sb-foot">
+    <div class="plant-card">
+      <div class="plant-name">{% icon "factory" 13 %} Unit 1 · Coimbatore</div>
+      <div class="pc-meta">Shift A · 06:00 – 14:00 · 41 users online</div>
+    </div>
+    <a class="btn sb-tablet-btn" href="{% url 'factoryops:tablet_home' %}">{% icon "tablet" 15 %}<span>Shopfloor Tablet</span></a>
+  </div>
+</aside>

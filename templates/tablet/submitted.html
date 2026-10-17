@@ -1,0 +1,32 @@
+{% extends "tablet/base_tablet.html" %}{% load ui %}
+{% block tablet %}
+<div class="t-scroll" style="padding:40px 24px;text-align:center">
+  <div style="width:74px;height:74px;border-radius:50%;background:rgba(52,211,153,.14);color:#6EE7B7;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+    {% icon "checkCircle" 36 %}
+  </div>
+  <div style="font-size:24px;font-weight:780;letter-spacing:-.02em">Checklist submitted</div>
+  <div class="small muted" style="margin-top:6px">{{ insp.wo.wo_no }} · {{ insp.op }}</div>
+
+  <div class="card" style="max-width:440px;margin:20px auto 0;text-align:left">
+    <div class="card-b">
+      <div class="col" style="gap:8px">
+        <div class="row between"><span class="tiny faint">Checklist</span><span class="mono small">{{ insp.pk|stringformat:"05d" }}</span></div>
+        <div class="row between"><span class="tiny faint">Template</span><span class="small">{{ insp.template_label }}</span></div>
+        <div class="row between"><span class="tiny faint">Parameters</span><span class="small">{{ insp.measurements.count }}</span></div>
+        <div class="row between"><span class="tiny faint">Out of tolerance</span><span class="small">{{ insp.failed|length }}</span></div>
+        <div class="row between"><span class="tiny faint">Photos</span><span class="small">{{ insp.photos }}</span></div>
+        <div class="row between"><span class="tiny faint">Status</span><span class="chip amber" style="font-size:8.5px">Awaiting supervisor</span></div>
+      </div>
+    </div>
+    <div class="dc-foot">
+      <span class="tiny faint">Written to the audit trail</span>
+      <a class="btn primary sm" href="{{ portal_url }}" style="margin-left:auto;text-decoration:none">{% icon "shield" 13 %} See it in the queue</a>
+    </div>
+  </div>
+
+  <div class="row" style="justify-content:center;gap:9px;margin-top:18px">
+    <a class="btn" href="{% url 'factoryops:tablet_jobs' %}" style="text-decoration:none">{% icon "clipboard" 14 %} Next job</a>
+    <a class="btn" href="{% url 'factoryops:tablet_handover' %}" style="text-decoration:none">{% icon "pen" 14 %} Shift handover</a>
+  </div>
+</div>
+{% endblock %}

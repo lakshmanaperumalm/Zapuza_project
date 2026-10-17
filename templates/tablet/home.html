@@ -1,0 +1,73 @@
+{% extends "tablet/base_tablet.html" %}{% load ui %}
+{% block tablet %}
+<div class="t-scroll" style="padding:22px 24px">
+  <div class="row between" style="margin-bottom:16px">
+    <div>
+      <div class="tiny faint">17 OCT 2026 · SHIFT A · {% icon "factory" 11 %} UNIT 1 COIMBATORE</div>
+      <div style="font-size:24px;font-weight:780;letter-spacing:-.02em;margin-top:3px">Good morning, {{ employee.name|default:"Operator" }}</div>
+    </div>
+    <span class="chip {% if handover_ok %}green{% else %}amber{% endif %}" style="font-size:10px">
+      {% icon "lock" 10 %} {% if handover_ok %}Shift active{% else %}Handover pending{% endif %}</span>
+  </div>
+
+  {% if not handover_ok %}
+    <div class="callout amber" style="margin-bottom:16px;padding:14px">{% icon "pen" 16 %}
+      <div><b>Incoming shift acknowledgement pending.</b> Sign the digital handover log before job entry unlocks. Outgoing shift: M. Prakash · 12 open checks.
+        <div style="margin-top:8px"><a class="btn sm amber" href="{% url 'factoryops:tablet_handover' %}" style="text-decoration:none">{% icon "arrowR" 13 %} Complete handover</a></div>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="kpis three" style="margin-bottom:16px">
+    <div class="kpi"><div class="k-label">My active jobs</div><div class="k-value">{{ jobs|length }}</div><div class="k-foot">assigned to this station</div></div>
+    <div class="kpi"><div class="k-label">Quality checks due</div><div class="k-value">1</div><div class="k-foot">hourly sample · 12 min</div></div>
+    <div class="kpi"><div class="k-label">Parts produced today</div><div class="k-value">214</div><div class="k-foot">2 scrap · 0 defect escapes</div></div>
+  </div>
+
+  <div class="card" style="border-color:rgba(246,179,60,.3);background:linear-gradient(180deg,rgba(246,179,60,.06),transparent);margin-bottom:16px">
+    <div class="card-b">
+      <div class="row between">
+        <div class="row" style="gap:9px"><span class="alert-ico amber" style="width:32px;height:32px">{% icon "pause" 15 %}</span>
+          <div><div class="b small">Cooling hold active — WO-1039</div><div class="tiny faint">HT-02 · Op 50 locked until the 4h hold clears</div></div></div>
+        <span class="mono b" style="color:#FFCE77;font-size:18px" id="hold-clock">01:22:14</span>
+      </div>
+    </div>
+  </div>
+
+  <a class="card" href="{% url 'factoryops:tablet_station' %}" style="display:block;text-decoration:none;color:inherit;margin-bottom:16px">
+    <div class="card-b" style="display:flex;gap:14px;align-items:center">
+      <span style="width:46px;height:46px;border-radius:12px;background:rgba(22,211,168,.12);color:#6EE7B7;display:flex;align-items:center;justify-content:center">{% icon "scan" 22 %}</span>
+      <div class="grow">
+        <div class="b">Scan station QR to begin</div>
+        <div class="tiny faint">Job selection is location-locked — one machine, one checklist at a time.</div>
+      </div>
+      {% icon "chevR" 18 'faint' %}
+    </div>
+  </a>
+
+  <div class="t-sec-label">Today's job travelers</div>
+  <div class="col" style="gap:8px">
+    {% for j in jobs %}
+      <a class="card" href="{% if handover_ok %}{% url 'factoryops:tablet_traveler' j.wo_no %}{% else %}{% url 'factoryops:tablet_handover' %}{% endif %}" style="display:block;text-decoration:none;color:inherit">
+        <div class="card-b" style="display:flex;gap:12px;align-items:center">
+          <span class="alert-ico blue" style="width:34px;height:34px">{% icon "clipboard" 15 %}</span>
+          <div class="grow">
+            <div class="b small">{{ j.wo_no }} · {{ j.part.name }}</div>
+            <div class="tiny faint">{{ j.line }} · {{ j.qty_done }}/{{ j.qty }} produced · {{ j.get_status_display }}</div>
+          </div>
+          {% if j.wo_no == 'WO-1052' %}<span class="chip amber" style="font-size:8.5px">{% icon "lock" 8 %} First-piece gate</span>{% endif %}
+          {% icon "chevR" 16 'faint' %}
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{{ block.super }}
+<script>
+(function(){var el=document.getElementById('hold-clock');if(!el)return;var s=82*60+14;
+setInterval(function(){s=Math.max(0,s-1);var h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;
+el.textContent=[h,m,x].map(function(n){return String(n).padStart(2,'0')}).join(':')},1000)})();
+</script>
+{% endblock %}

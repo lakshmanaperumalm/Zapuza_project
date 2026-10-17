@@ -1,0 +1,177 @@
+{% extends "base.html" %}{% load ui %}
+{% block page %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Operations Dashboard</h1>
+    <p class="page-sub">Live floor state · Unit 1 Coimbatore · updated just now</p>
+  </div>
+  <div class="row wrap">
+    <a class="btn" href="{% url 'factoryops:rollout' %}">{% icon "calendar" 15 %} Rollout plan</a>
+    <a class="btn primary" href="{% url 'factoryops:tablet_home' %}">{% icon "tablet" 15 %} Open Tablet App</a>
+  </div>
+</div>
+
+<div class="kpis">
+  {% for label, value, foot, line, color in kpis %}
+    <div class="kpi">
+      <div class="k-label">{{ label }}</div>
+      <div class="k-value">{{ value|safe }}</div>
+      <div class="k-foot">{{ foot }}</div>
+      {% spark line color %}
+    </div>
+  {% endfor %}
+</div>
+
+<div class="dash-cols">
+  <div class="dash-col">
+    <div class="card">
+      <div class="card-h">
+        <h3>{% icon "cpu" 15 %} Live machine floor <span class="chip gray" style="font-size:9px">{{ machines|length }} stations</span></h3>
+        <span class="sub row" style="gap:12px">
+          <span class="row" style="gap:5px"><span style="width:6px;height:6px;border-radius:50%;display:inline-block;background:#34D399"></span>{{ running }} running</span>
+          <span class="row" style="gap:5px"><span style="width:6px;height:6px;border-radius:50%;display:inline-block;background:#64748B"></span>{{ idle }} idle</span>
+          <span class="row" style="gap:5px"><span style="width:6px;height:6px;border-radius:50%;display:inline-block;background:#F6B33C"></span>PM lock</span>
+          <span class="row" style="gap:5px"><span style="width:6px;height:6px;border-radius:50%;display:inline-block;background:#FF5D6C"></span>Fault</span>
+        </span>
+      </div>
+      <div class="machine-grid">
+        {% for m in machines %}
+          <div class="machine {{ m.state }}">
+            <div class="mc-top">
+              <span class="chip {% if m.state == 'running' %}green{% elif m.state == 'locked' %}amber{% elif m.state == 'down' %}red{% else %}gray{% endif %}" style="font-size:8.5px;padding:2px 6px">
+                <span class="dot"></span>{% if m.state == 'running' %}Running{% elif m.state == 'locked' %}PM lock{% elif m.state == 'down' %}Fault{% else %}Idle{% endif %}
+              </span>
+              <span class="mc-state mono tiny faint">{{ m.code }}</span>
+            </div>
+            <div class="mc-name">{{ m.name }}</div>
+            <div class="mc-line">{{ m.op|default:"Awaiting job" }}</div>
+            <div class="mc-job">{% if m.job %}{{ m.job }} · {{ m.part }}{% else %}—{% endif %}</div>
+            <div class="mc-bar"><i style="width:{{ m.progress }}%"></i></div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h3>{% icon "trend" 15 %} Hourly output vs target</h3><span class="sub">Shift A · parts produced</span></div>
+      <div class="card-b">
+        <div class="bars">
+          {% for b in hourly %}
+            <div class="bar-col">
+              <span class="bv">{{ b.v }}</span>
+              <div class="bar {% if b.state == 'good' %}good{% elif b.state == 'blocked' %}bad{% endif %}" style="height:{{ b.v }}%"></div>
+              <span class="bl">{{ b.t }}</span>
+            </div>
+          {% endfor %}
+        </div>
+        <div class="legend">
+          <span><i style="background:#34D399"></i>Met target</span>
+          <span><i style="background:#2E4B6E"></i>Behind</span>
+          <span><i style="background:#FF5D6C"></i>Blocked (HT-01 PM lock)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h">
+        <h3>{% icon "shield" 15 %} Supervisor approval queue
+          {% if pending_count %}<span class="chip amber" style="font-size:9px">{{ pending_count }} waiting</span>{% endif %}
+        </h3>
+        <a class="sub" href="{% url 'factoryops:approvals' %}" style="color:#9CC0FF;text-decoration:none">Review all →</a>
+      </div>
+      <div class="card-b tight">
+        {% for a in pending %}
+          <a class="appr-mini" href="{% url 'factoryops:approvals' %}" style="text-decoration:none;color:inherit">
+            <span class="appr-avatar">{{ a.wo.wo_no|slice:"3:5" }}</span>
+            <div class="grow" style="min-width:0">
+              <div class="row" style="gap:8px"><span class="b small">{{ a.wo.wo_no }}</span><span class="tiny faint">{{ a.wo.part.name }}</span></div>
+              <div class="tiny faint" style="margin-top:2px">{{ a.op }} · {{ a.inspector }} · {{ a.submitted_at|time:"H:i" }}</div>
+            </div>
+            <span class="chip {% if a.ctq_failed %}red{% else %}amber{% endif %}" style="font-size:9px">
+              {% if a.ctq_failed %}CTQ failure{% else %}Concession?{% endif %}
+            </span>
+          </a>
+        {% empty %}
+          <div class="card-b muted small">No checklists waiting — the queue is clear.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-col">
+    <div class="card" style="border-color:rgba(246,179,60,.3);background:linear-gradient(180deg,rgba(246,179,60,.07),rgba(246,179,60,.015))">
+      <div class="card-b">
+        <div class="row between" style="margin-bottom:8px">
+          <span class="chip amber" style="font-size:9.5px">{% icon "pause" 10 %} Process hold active</span>
+          <span class="mono b" id="hold-clock" style="color:#FFCE77;font-size:15px">01:22:14</span>
+        </div>
+        <div class="b" style="font-size:13px">Cooling hold — WO-1039</div>
+        <div class="tiny muted" style="margin-top:4px;line-height:1.5">HT-02 · Op 50 locked until the 4-hour hold clears. Scanning into any downstream machine is refused.</div>
+        <a class="btn sm" style="margin-top:10px;text-decoration:none" href="{% url 'factoryops:job_detail' 'WO-1039' %}">{% icon "eye" 13 %} Open traveler</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-h"><h3>{% icon "truck" 15 %} Dispatch readiness</h3><a class="sub" href="{% url 'factoryops:dispatch' %}" style="color:#9CC0FF;text-decoration:none">All gates →</a></div>
+      <div class="card-b tight">
+        {% for s in shipments %}
+          <a class="alert-row" href="{% url 'factoryops:gate_pass' s.pk %}" style="text-decoration:none;color:inherit">
+            <span class="alert-ico {% if s.clear %}green{% else %}red{% endif %}" style="background:{% if s.clear %}rgba(52,211,153,.12){% else %}rgba(255,93,108,.12){% endif %};color:{% if s.clear %}#6EE7B7{% else %}#FF9AA4{% endif %}">
+              {% if s.clear %}{% icon "unlock" 14 %}{% else %}{% icon "lock" 14 %}{% endif %}
+            </span>
+            <div class="grow">
+              <div class="b small">{{ s.no }} · {{ s.part_name }}</div>
+              <div class="tiny faint">{{ s.customer }} · {{ s.qty }} pcs</div>
+            </div>
+            <span class="chip {% if s.clear %}green{% else %}red{% endif %}" style="font-size:8.5px">{% if s.clear %}Gate open{% else %}Interlocked{% endif %}</span>
+          </a>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if lineage_wo %}
+    <div class="card">
+      <div class="card-h"><h3>{% icon "branch" 15 %} Lineage snapshot</h3><span class="sub">{{ lineage_wo.heat.heat_no }} · {{ lineage_wo.wo_no }}</span></div>
+      <div class="card-b">
+        <div class="row wrap" style="gap:6px;font-size:10.5px">
+          <span class="chip gray" style="font-size:9px">{% icon "file" 9 %} MTC</span>{% icon "chevR" 10 %}
+          <span class="chip blue" style="font-size:9px">{{ lineage_wo.heat.heat_no }}</span>{% icon "chevR" 10 %}
+          <span class="chip amber" style="font-size:9px">{{ lineage_wo.wo_no }}</span>{% icon "chevR" 10 %}
+          <span class="chip gray" style="font-size:9px">Op 50</span>
+        </div>
+        <div class="tiny faint" style="margin-top:9px">Supplier {{ lineage_wo.heat.supplier }} · {{ lineage_wo.heat.grade }} · certified chemistry on file.</div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-h"><h3>{% icon "history" 15 %} Floor activity</h3><span class="sub">audit-linked</span></div>
+      <div class="feed">
+        {% for e in feed %}
+          <div class="feed-item">
+            <span class="feed-dot {% if 'blocked' in e.action|lower or 'quarant' in e.action|lower %}red{% elif 'hold' in e.action|lower or 'concession' in e.action|lower %}amber{% endif %}"></span>
+            <div class="grow">
+              <div>{{ e.action }} <span class="faint">· {{ e.entity }}</span></div>
+              <div class="tiny faint">{{ e.user }} · {{ e.at|time:"H:i" }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var el = document.getElementById('hold-clock');
+  if (!el) return;
+  var s = 82 * 60 + 14;
+  setInterval(function () {
+    s = s > 0 ? s - 1 : 0;
+    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    el.textContent = [h, m, sec].map(function (n) { return String(n).padStart(2, '0'); }).join(':');
+  }, 1000);
+})();
+</script>
+{% endblock %}

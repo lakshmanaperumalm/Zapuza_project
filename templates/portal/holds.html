@@ -1,0 +1,103 @@
+{% extends "base.html" %}{% load ui %}
+{% block page %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Quality Holds &amp; Material Review Board</h1>
+    <p class="page-sub">Quarantined lots stay frozen in the digital Rejection Holding Area until the MRB records one of four dispositions.</p>
+  </div>
+  <div class="row wrap"><a class="btn" href="{% url 'factoryops:approvals' %}">{% icon "shield" 15 %} Approval queue</a></div>
+</div>
+
+<div class="callout blue" style="margin-bottom:14px">{% icon "info" 15 %}
+  <div><b>Four dispositions only.</b> Rework, scrap, return to vendor or customer concession. Until one is recorded, the lot cannot be scanned into any machine and its stock cannot be issued.</div>
+</div>
+
+<div class="stack">
+{% for h in open_holds %}
+  <div class="card">
+    <div class="appr-top">
+      <div class="appr-avatar" style="background:linear-gradient(135deg,#5B2230,#7A3444);color:#FFB3BB">{% icon "lock" 15 %}</div>
+      <div class="grow">
+        <div class="row wrap" style="gap:8px">
+          <span class="b" style="font-size:13.5px">{{ h.wo.wo_no }} · {{ h.wo.part.name }}</span>
+          {% if h.dispatch_block_minutes %}
+            <span class="chip amber" style="font-size:9px">{% icon "clock" 8 %} Cure hold — dispatch blocked</span>
+          {% else %}
+            <span class="chip red" style="font-size:9px">{% icon "lock" 8 %} Quarantined</span>
+          {% endif %}
+        </div>
+        <div class="tiny faint" style="margin-top:3px">{{ h.reason }}</div>
+      </div>
+      <div style="text-align:right;flex:none"><div class="tiny faint">Qty held</div><div class="b" style="font-size:16px">{{ h.qty }}</div></div>
+    </div>
+    <div class="intake-meta">
+      <div><div class="im-l">Since</div><div class="im-v">{{ h.since }}</div></div>
+      <div><div class="im-l">Heat lot</div><div class="im-v mono">{{ h.wo.heat.heat_no|default:"—" }}</div></div>
+      <div><div class="im-l">Inspector</div><div class="im-v">{{ h.inspector|default:"—" }}</div></div>
+      <div><div class="im-l">Evidence</div><div class="im-v">{{ h.photos }} photos</div></div>
+    </div>
+    <div class="intake-foot">
+      <span class="tiny faint" style="margin-right:auto">{{ h.op }} · customer {{ h.wo.part.customer }}</span>
+      {% if can_dispose %}
+        <button class="btn primary sm" data-modal="mrb-{{ h.pk }}">{% icon "shieldCheck" 13 %} Record MRB disposition</button>
+      {% else %}
+        <button class="btn sm" disabled title="Only supervisor / QM / plant manager can dispose">{% icon "lock" 13 %} MRB disposition</button>
+      {% endif %}
+      <a class="btn sm" href="{% url 'factoryops:job_detail' h.wo.wo_no %}" style="text-decoration:none">{% icon "eye" 13 %} Traveler</a>
+    </div>
+  </div>
+
+  {% if can_dispose %}
+  <div class="modal-scrim" id="mrb-{{ h.pk }}">
+    <form class="modal" method="post" action="{% url 'factoryops:dispose_hold' h.pk %}">
+      {% csrf_token %}
+      <div class="modal-h">
+        <div class="mh-ico">{% icon "shieldCheck" 17 %}</div>
+        <div class="grow"><h3>Material Review Board disposition</h3><div class="mh-sub">{{ h.wo.wo_no }} · {{ h.qty }} pcs · {{ h.reason|truncatechars:60 }}</div></div>
+        <button type="button" class="icon-btn" data-close>{% icon "x" 15 %}</button>
+      </div>
+      <div class="modal-b">
+        <div class="col" style="gap:7px;margin-bottom:14px">
+          {% for key, label in dispositions %}
+            <label class="row" style="gap:9px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;cursor:pointer">
+              <input type="radio" name="disposition" value="{{ key }}" {% if forloop.first %}checked{% endif %} style="accent-color:#16D3A8">
+              <span class="b small">{{ label }}</span>
+              <span class="tiny faint" style="margin-left:auto">{% if key == 'rework' %}Re-enter routing{% elif key == 'scrap' %}Write off{% elif key == 'rtv' %}Supplier debit{% else %}Ship with deviation{% endif %}</span>
+            </label>
+          {% endfor %}
+        </div>
+        <div class="field"><label>Containment / disposition note (minimum 10 characters)</label>
+          <textarea class="input" name="note" rows="3">Lot segregated in bin Q-02. Rework route re-opened at Op 60; Quality to re-inspect 100% before release.</textarea>
+        </div>
+      </div>
+      <div class="modal-f">
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button class="btn primary" type="submit">{% icon "check" 14 %} Record disposition</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+{% empty %}
+  <div class="card"><div class="card-b muted">No open holds. Every quarantined lot has a recorded disposition.</div></div>
+{% endfor %}
+</div>
+
+<div class="section-title">Dispositioned</div>
+<div class="card">
+  <div class="card-b tight">
+    {% for h in disposed %}
+      <div class="alert-row" style="cursor:default">
+        <span class="alert-ico green" style="background:rgba(52,211,153,.12);color:#6EE7B7">{% icon "check" 14 %}</span>
+        <div class="grow">
+          <div class="b small">{{ h.wo.wo_no }} · {{ h.wo.part.name }}</div>
+          <div class="tiny faint">{{ h.disposition_note|truncatechars:80 }}</div>
+        </div>
+        <span class="chip green" style="font-size:8.5px">{{ h.get_disposition_display }}</span>
+        <span class="tiny faint">{{ h.disposition_by }} · {{ h.disposition_at|time:"H:i" }}</span>
+      </div>
+    {% empty %}
+      <div class="card-b muted small">No dispositions recorded yet this shift.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

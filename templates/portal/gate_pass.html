@@ -1,0 +1,112 @@
+{% extends "base.html" %}{% load ui %}
+{% block page %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">{% if clear %}Gate Pass {{ ship.no }}{% else %}Gate pass blocked — {{ ship.no }}{% endif %}</h1>
+    <p class="page-sub">{{ ship.part_name }} · {{ ship.customer }} · {{ ship.qty }} pcs</p>
+  </div>
+  <div class="row wrap"><a class="btn" href="{% url 'factoryops:dispatch' %}">{% icon "chevL" 14 %} All gates</a></div>
+</div>
+
+{% if not clear %}
+  <div class="card" style="border-color:rgba(255,93,108,.35);background:linear-gradient(180deg,rgba(255,93,108,.07),rgba(255,93,108,.01));margin-bottom:16px">
+    <div class="card-b">
+      <div class="row" style="gap:11px;margin-bottom:10px">
+        <span class="alert-ico red" style="width:38px;height:38px;background:rgba(255,93,108,.15);color:#FF9AA4">{% icon "lock" 18 %}</span>
+        <div>
+          <div class="b" style="font-size:15px">Dispatch blocked by the interlock engine</div>
+          <div class="tiny muted">The gate pass is not generated. The warehouse is shown the exact failing rule.</div>
+        </div>
+      </div>
+      <div class="col" style="gap:6px">
+        {% for c in checks %}
+          <div class="row" style="gap:9px;padding:9px 11px;border:1px solid {% if c.ok %}rgba(52,211,153,.2){% else %}rgba(255,93,108,.28){% endif %};border-radius:9px;background:{% if c.ok %}rgba(52,211,153,.05){% else %}rgba(255,93,108,.06){% endif %}">
+            <span class="ck {% if c.ok %}ok{% else %}bad{% endif %}">{% if c.ok %}{% icon "check" 11 %}{% else %}{% icon "x" 11 %}{% endif %}</span>
+            <div class="grow"><div class="ck-label">{{ c.label }}</div><div class="ck-sub">{{ c.sub }}</div></div>
+            <span class="chip {% if c.ok %}green{% else %}red{% endif %}" style="font-size:8.5px">{% if c.ok %}Rule passed{% else %}Rule failed{% endif %}</span>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="tiny faint" style="margin-top:12px">{% icon "history" 11 %} This attempt has been written to the audit trail as <span class="mono">Shipping gate blocked</span>.</div>
+    </div>
+  </div>
+{% else %}
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-h">
+      <h3>{% icon "shieldCheck" 15 %} All three interlocks verified</h3>
+      <span class="chip green" style="font-size:9px;margin-left:auto">{% icon "unlock" 9 %} Cleared for dispatch</span>
+    </div>
+    <div class="check-list">
+      {% for c in checks %}
+        <div class="check"><span class="ck ok">{% icon "check" 11 %}</span>
+          <div><div class="ck-label">{{ c.label }}</div><div class="ck-sub">{{ c.sub }}</div></div></div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="grid2 even">
+    <div class="card">
+      <div class="card-h"><h3>{% icon "file" 15 %} Gate pass</h3><span class="sub">auto-generated</span></div>
+      <div class="card-b" style="background:#fff;color:#0B1220;border-radius:0 0 13px 13px">
+        <div class="row between" style="align-items:flex-start">
+          <div>
+            <div style="font-size:9px;font-weight:800;letter-spacing:.1em;color:#0F766E">ZAPUZA TECHNOLOGIES LLP</div>
+            <div style="font-size:17px;font-weight:800;margin-top:2px">Dispatch Gate Pass</div>
+            <div style="font-size:11px;color:#475569">Unit 1 · Coimbatore · Shift A</div>
+          </div>
+          {% qr ship.no 78 %}
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;font-size:11px;margin:14px 0 10px">
+          <div><b>Gate pass</b><br>{{ ship.no }}</div>
+          <div><b>Work order</b><br>{{ ship.wo.wo_no }}</div>
+          <div><b>Customer</b><br>{{ ship.customer }}</div>
+          <div><b>Part</b><br>{{ ship.part_name }}</div>
+          <div><b>Quantity</b><br>{{ ship.qty }} pcs</div>
+          <div><b>Crates</b><br>{{ ship.crate }}</div>
+          <div><b>Heat lot</b><br>{{ ship.wo.heat.heat_no|default:"—" }}</div>
+          <div><b>Vehicle</b><br>{{ ship.vehicle|default:"—" }}</div>
+        </div>
+        <div style="border-top:1px dashed #CBD5E1;padding-top:9px;font-size:9.5px;color:#64748B">
+          Interlocks: operations {{ ship.wo.ops_done }}/{{ ship.wo.ops_total }} · hold times verified · final PDI approved.
+          Generated {% now "d M Y H:i" %} · reprint watermark COPY.
+        </div>
+      </div>
+      <div class="dc-foot">
+        <form method="post" style="margin-left:auto">{% csrf_token %}
+          <button class="btn primary sm" type="submit">{% icon "print" 13 %} Print gate pass &amp; release</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <div class="card-h"><h3>{% icon "qr" 15 %} Customer QR label</h3><span class="sub">crate {{ ship.crate }}</span></div>
+        <div class="card-b" style="background:#fff;color:#0B1220;border-radius:0 0 13px 13px">
+          <div class="row" style="gap:12px">
+            {% qr ship.no|add:"-crate" 72 %}
+            <div>
+              <div style="font-size:9px;font-weight:800;letter-spacing:.09em;color:#64748B">ZAPUZA · CUSTOMER QR</div>
+              <div style="font-size:12.5px;font-weight:750;margin-top:2px">{{ ship.crate }} · {{ ship.part_name }}</div>
+              <div style="font-size:9.5px;color:#64748B;margin-top:2px">Scan → inspection report &amp; traceability</div>
+            </div>
+          </div>
+          {% barcode ship.no 260 46 %}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>{% icon "shieldCheck" 15 %} Inspection certificate</h3></div>
+        <div class="card-b">
+          <div class="tiny muted" style="line-height:1.65">
+            Certificate <span class="mono">COC-{{ ship.no|slice:"5:" }}</span> is generated from the approved PDI checklist for
+            <b>{{ ship.wo.wo_no }}</b> — heat lot <b>{{ ship.wo.heat.heat_no }}</b>, {{ ship.wo.heat.grade }}, supplier {{ ship.wo.heat.supplier }}.
+            {% with insp=ship.wo.inspections.first %}
+              {% if insp %}Signed by {{ insp.decided_by }} at {{ insp.decided_at|time:"H:i" }} · {{ insp.measurements.count }} characteristics recorded.{% endif %}
+            {% endwith %}
+          </div>
+          <a class="btn sm" style="margin-top:10px;text-decoration:none" href="{% url 'factoryops:job_detail' ship.wo.wo_no %}">{% icon "eye" 13 %} Open traveler record</a>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}
