@@ -9,7 +9,11 @@ Two experiences share one database and one rule engine:
 This is not a clickable mock-up. Every screen is a Django view, every button posts to the server, every decision is written to the database and to an append-only audit ledger. Where the prototype says a rule is enforced, the rule is enforced **server-side** — you can try to break it in front of the client.
 
 ---
+🎥 Project Demo Video
 
+This video demonstrates the project functionality, explains the code, and showcases the working features through a screen recording with voice narration.
+
+Watch the Demo Video: "Click here to watch the project demo" (https://drive.google.com/file/d/16SUId61j8e0DMQ48UZvwizhZK8v9CF3f/view?usp=drivesdk)
 ## Quick start
 
 ```bash
